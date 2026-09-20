@@ -38,14 +38,21 @@ tests/        regresión (corre sin red, con datos sintéticos)
 research/     bitácora de propuestas de mejora (ver más abajo)
 ```
 
-## Estrategia base (baseline, no la versión final)
+## Estrategias
 
-Ruptura de canal Donchian (20 velas) + filtro de tendencia (EMA 200) + stop/target
-en múltiplos de ATR. Es la regla clásica de trend-following (sistema Turtle
-Traders) con pocas condiciones objetivas a propósito — cada parámetro extra es
-una oportunidad de overfitting. El racional completo está documentado en
-`strategy/donchian_breakout.py`. **Esto es un punto de partida para validar el
-pipeline, no una afirmación de que "esto funciona".**
+- **`donchian`** (baseline original): ruptura de canal Donchian (20 velas) +
+  filtro de tendencia (EMA 200) + stop/target en múltiplos de ATR. Primer
+  walk-forward real (BTC/USDT, ~1 año OOS): profit_factor 0.54, -47.5% de
+  retorno, kill switch de drawdown activado. **No tiene edge en este mercado
+  a este timeframe** — ver `research/2026-09-20-resultado-baseline-donchian.md`.
+- **`rsi_mr`** (hipótesis alternativa): reversión a la media con RSI(2) corto
+  + filtro de tendencia (SMA 200) + stop/target ajustados. Racional completo
+  en `strategy/rsi_mean_reversion.py`. Todavía sin validar con datos reales.
+
+Elegir estrategia al correr el walk-forward con `--strategy donchian|rsi_mr`
+(ver más abajo). Cada una documenta su racional en su propio archivo — **esto
+es exploración de hipótesis, no una afirmación de que alguna "funciona"**
+hasta que el walk-forward lo confirme con datos reales.
 
 ## Setup
 
@@ -58,7 +65,8 @@ cp .env.example .env   # completar BINANCE_API_KEY/SECRET del testnet: https://t
 ## Cómo correr la validación (walk-forward, out-of-sample)
 
 ```bash
-.venv/bin/python -m scripts.run_walk_forward --days 365 --train-days 60 --test-days 14
+.venv/bin/python -m scripts.run_walk_forward --days 365 --train-days 60 --test-days 14 --strategy donchian
+.venv/bin/python -m scripts.run_walk_forward --days 365 --train-days 60 --test-days 14 --strategy rsi_mr
 ```
 
 Reporta métricas (win rate, profit factor, drawdown, Sharpe) calculadas

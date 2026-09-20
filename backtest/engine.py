@@ -10,11 +10,11 @@ Decisiones de diseño relevantes para la validez del resultado:
     eso es a propósito, para no mezclar "medir" con "ajustar" en el mismo paso.
 """
 from dataclasses import dataclass
+from typing import Callable
 
 import pandas as pd
 
 from risk.risk_manager import RiskManager
-from strategy.donchian_breakout import StrategyParams, compute_signals
 
 TAKER_FEE_PCT = 0.001      # comisión taker spot de Binance (~0.1%)
 SLIPPAGE_PCT = 0.0005      # estimación conservadora de slippage intradía
@@ -39,8 +39,9 @@ def _apply_costs(price: float, side: str, is_entry: bool) -> float:
 
 def run_backtest(
     df: pd.DataFrame,
-    strategy_params: StrategyParams,
+    strategy_params: object,
     risk_manager: RiskManager,
+    compute_signals: Callable[[pd.DataFrame, object], pd.DataFrame],
 ) -> tuple[pd.DataFrame, pd.Series]:
     signals = compute_signals(df, strategy_params)
     trades: list[Trade] = []

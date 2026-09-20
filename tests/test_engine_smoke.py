@@ -7,7 +7,9 @@ import pandas as pd
 
 from backtest.engine import run_backtest, walk_forward_windows
 from risk.risk_manager import RiskManager
-from strategy.donchian_breakout import StrategyParams
+from strategy.donchian_breakout import StrategyParams, compute_signals
+from strategy.rsi_mean_reversion import StrategyParams as RsiParams
+from strategy.rsi_mean_reversion import compute_signals as rsi_compute_signals
 
 
 def _synthetic_ohlcv(n: int = 6000, seed: int = 42) -> pd.DataFrame:
@@ -37,7 +39,7 @@ def test_backtest_runs_end_to_end_and_respects_drawdown_limit():
     assert oos_frames, "walk_forward_windows no generó ventanas de test"
 
     oos_data = pd.concat(oos_frames).drop_duplicates("open_time").sort_values("open_time")
-    trades, equity_curve = run_backtest(oos_data, params, risk_manager)
+    trades, equity_curve = run_backtest(oos_data, params, risk_manager, compute_signals)
 
     assert len(equity_curve) >= 1
     assert equity_curve.iloc[0] == 1000.0
@@ -47,6 +49,19 @@ def test_backtest_runs_end_to_end_and_respects_drawdown_limit():
     peak = equity_curve.cummax()
     worst_dd = ((equity_curve - peak) / peak).min()
     assert worst_dd >= -0.55, f"drawdown se fue muy por encima del límite configurado: {worst_dd:.2%}"
+
+
+def test_rsi_mean_reversion_runs_end_to_end():
+    df = _synthetic_ohlcv()
+    params = RsiParams()
+    risk_manager = RiskManager(
+        initial_capital=1000.0, max_daily_loss_pct=0.10,
+        max_drawdown_pct=0.50, risk_per_trade_pct=0.01,
+    )
+    trades, equity_curve = run_backtest(df, params, risk_manager, rsi_compute_signals)
+    assert len(equity_curve) >= 1
+    if not trades.empty:
+        assert (trades["quantity"] > 0).all()
 
 
 def test_risk_manager_halts_on_daily_loss_limit():

@@ -19,6 +19,8 @@ from dataclasses import dataclass
 
 import pandas as pd
 
+from strategy.indicators import atr as _atr
+
 
 @dataclass(frozen=True)
 class StrategyParams:
@@ -27,17 +29,6 @@ class StrategyParams:
     atr_period: int = 14
     stop_atr_mult: float = 1.5
     target_atr_mult: float = 3.0  # ratio riesgo:beneficio 1:2
-
-
-def _atr(df: pd.DataFrame, period: int) -> pd.Series:
-    high, low, close = df["high"], df["low"], df["close"]
-    prev_close = close.shift(1)
-    tr = pd.concat([
-        high - low,
-        (high - prev_close).abs(),
-        (low - prev_close).abs(),
-    ], axis=1).max(axis=1)
-    return tr.rolling(period).mean()
 
 
 def compute_signals(df: pd.DataFrame, params: StrategyParams = StrategyParams()) -> pd.DataFrame:
