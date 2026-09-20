@@ -15,8 +15,6 @@ from data.fetch_binance import load_or_fetch
 from risk.risk_manager import RiskManager
 from strategy.donchian_breakout import StrategyParams
 
-PERIODS_PER_YEAR = {"15m": 365 * 24 * 4, "1h": 365 * 24, "1d": 365}
-
 
 def main() -> None:
     parser = argparse.ArgumentParser()
@@ -56,7 +54,7 @@ def main() -> None:
     oos_data = pd.concat(oos_frames, ignore_index=True).drop_duplicates("open_time").sort_values("open_time")
     trades, equity_curve = run_backtest(oos_data, params, risk_manager)
 
-    metrics = summarize(trades, equity_curve, PERIODS_PER_YEAR.get(MARKET.timeframe, 365 * 24))
+    metrics = summarize(trades, equity_curve)
 
     print(f"Ventanas walk-forward evaluadas (solo out-of-sample): {n_windows}")
     print(f"Periodo total OOS: {oos_data['open_time'].min()} -> {oos_data['open_time'].max()}")
