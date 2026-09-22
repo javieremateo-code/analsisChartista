@@ -4,4 +4,7 @@ __pycache__/
 .env
 data/cache/
 execution/state/
+state/
+logs/
+reports/
 .pytest_cache/

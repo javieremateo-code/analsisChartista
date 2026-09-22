@@ -1,0 +1,30 @@
+{
+  "crypto": {
+    "validated": true,
+    "oos_sharpe": 0.6342801264908539,
+    "oos_cagr": 0.07216710613417532,
+    "n_oos": 114,
+    "is_cagr": 0.05594396167460891
+  },
+  "forex": {
+    "validated": false,
+    "oos_sharpe": 0.2312832767411987,
+    "oos_cagr": 0.0021037716508858217,
+    "n_oos": 193,
+    "is_cagr": 0.005270939379559358
+  },
+  "commodities": {
+    "validated": false,
+    "oos_sharpe": 0.05250319454556786,
+    "oos_cagr": 0.0010089107118220753,
+    "n_oos": 139,
+    "is_cagr": 0.0026000551901104174
+  },
+  "stocks": {
+    "validated": false,
+    "oos_sharpe": 0.0023322274199925963,
+    "oos_cagr": -0.007371950353708745,
+    "n_oos": 7244,
+    "is_cagr": 0.028630883783810956
+  }
+}
