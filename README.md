@@ -327,3 +327,14 @@ Detalle en `research/2026-09-22-cuarta-campana.md`.
 
 Cifras finales del sistema recalculadas (balanceado, con capa de tendencia 20%, replay 2020-2026): **CAGR +29.2%, Sharpe 1.78, caída máxima -10.7%** (2022+: +27.7%, Sharpe 1.68);
 mediana 1 año con 1000€: +274€, peor 5%: +56€. Detalle en `research/2026-09-22-quinta-campana.md`.
+
+## Bot de rejilla (grid trading) — construido, probado a fondo y RECHAZADO
+El usuario pidió un bot que ganase dinero "cada hora, aunque sean céntimos". Se explicó que eso no existe garantizado, y que lo más parecido en la práctica es un bot de grid (compra escalonada en un rango,
+vende al subir un peldaño) — con el riesgo conocido de "recoger céntimos delante de una apisonadora". Se construyó (`screener/grid.py`) con cortafuegos obligatorio (liquida todo y pausa si el precio rompe
+el rango) y se probó con velas horarias **reales** de BTC y ETH desde 2020 (58.924 velas, incluye Covid, mayo 2021, LUNA, Celsius/3AC y FTX). Se encontró y corrigió un bug real en la simulación antes de sacar
+conclusiones (ver `research/2026-09-22-bot-de-rejilla-grid.md`), verificado con tests unitarios sobre precios sintéticos (`tests/test_grid.py`).
+
+**Resultado: RECHAZADO.** Con parámetros realistas (rango ±12%, 20 niveles, comisión 0.1%), la rejilla pierde dinero en las dos monedas durante 2020-2026 (BTC -39.2%, ETH -32.8%, frente a comprar y mantener
++1098% y +2028%). El cortafuegos sí funciona (ningún crash individual causó más de -22%), pero el desgaste real viene de recentrar el rango una y otra vez durante las tendencias sostenidas de cripto (398 y 368
+recentrados en 6.7 años) — no de los crashes puntuales. **No se ha conectado al informe ni al bot que sigue corriendo en papel.** Es la primera idea de todo el proyecto que se prueba y se descarta después del
+backtest, no antes, y confirma con datos reales la advertencia inicial sobre este tipo de estrategia.

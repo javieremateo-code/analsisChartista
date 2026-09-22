@@ -30,6 +30,7 @@ JOBS = [
     ("mejora_calidad_apalancamiento", "scripts.optimize_more", "Calidad frente a cantidad, universo de 200, filtros de otros activos en la tendencia y apalancamiento"),
     ("mejora_hold_riesgo_ensemble", "scripts.optimize_hold_risk", "Tiempo de mantenimiento, correlación entre señales simultáneas y conjunto de 5 modelos"),
     ("mejora_kelly_stop", "scripts.optimize_kelly_stop", "Dimensionado por Kelly, stop por volatilidad, señal doble y estacionalidad"),
+    ("bot_de_rejilla_grid", "scripts.study_grid", "Bot de rejilla (grid) BTC/ETH con cortafuegos: probado y rechazado"),
     ("mejora_4h_costos", "scripts.optimize_4h_costs", "Modelo sobre la regla de 4 h y palanca de costos"),
     ("final_sistema", "scripts.backtest_final", "Cifras finales: 3 perfiles con modelo + regla de 4 h + capital parado"),
     ("cripto_4h", "scripts.study_crypto_4h", "Regla de rebote con velas de 4 h (z>=3/4/5, 1 y 6 velas)"),
