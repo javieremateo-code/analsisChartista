@@ -315,3 +315,15 @@ Las ganancias en CFD/futuros tributan como ganancias patrimoniales del ahorro. E
 | agresivo | +42.0% | 1.60 | -21.5% | +36.1% (1.46) | +406 € (+20 €) |
 
 Detalle en `research/2026-09-22-cuarta-campana.md`.
+
+## Quinta campaña: Kelly, stop por volatilidad, señal doble y estacionalidad (scripts/optimize_kelly_stop.py)
+- **Kelly fraccionario:** mejora el replay, pero el diagnóstico mostró que la fracción calculada satura el tope de posición el 94% de las veces — es indistinguible de "subir el tope sin más".
+  Se **rechaza Kelly completo** por el riesgo de sobreapostar si el modelo se equivoca, combinado con el hallazgo de la campaña anterior de que las señales del mismo día están muy correlacionadas.
+- **Tope de posición moderado — ADOPTADO** (misma heurística de siempre, solo con más margen): `max_w` conservador 10%→12%, balanceado 10%→13%, agresivo 30%→35%. Mejora CAGR, Sharpe y
+  robustez sin disparar la caída máxima. El motivo real de la mejora: el tope anterior dejaba capital ocioso en días con pocas señales buenas.
+- **Stop de catástrofe ajustado a volatilidad — ADOPTADO** (solo regla diaria, validado con velas horarias reales): en vez de -30% fijo para todas las monedas, `6x` la desviación típica diaria
+  de cada una (entre -10% y -45%). Mejora el retorno medio (+3.54%→+4.16%) con un peor caso similar, y monedas de baja volatilidad (BTC/ETH) reciben un stop más ceñido que las más volátiles.
+- **Señal doble** (regla diaria + racha extrema de 4h el mismo día) y **estacionalidad por día de la semana**: no adoptadas — resultados inconsistentes entre dentro y fuera de muestra, o pura muestra pequeña.
+
+Cifras finales del sistema recalculadas (balanceado, con capa de tendencia 20%, replay 2020-2026): **CAGR +29.2%, Sharpe 1.78, caída máxima -10.7%** (2022+: +27.7%, Sharpe 1.68);
+mediana 1 año con 1000€: +274€, peor 5%: +56€. Detalle en `research/2026-09-22-quinta-campana.md`.

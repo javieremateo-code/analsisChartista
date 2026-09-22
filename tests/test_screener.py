@@ -194,3 +194,13 @@ def test_trend_signal_counts_moving_averages_and_targets_scale_with_fraction():
     close = pd.DataFrame({"BTC": up, "ETH": down})
     t = trend_targets(close, 0.20)
     assert abs(t["BTC"]["target_w"] - 0.10) < 1e-12 and t["ETH"]["target_w"] == 0.0  # 20% repartido entre 2 monedas x señal
+
+
+def test_catastrophe_stop_scales_with_volatility_within_bounds():
+    from screener.risk import STOP_MAX, STOP_MIN, catastrophe_stop
+    assert catastrophe_stop(0.01) == STOP_MIN  # muy poca volatilidad: se queda en el suelo
+    assert catastrophe_stop(0.20) == STOP_MAX  # volatilidad extrema: se queda en el techo
+    mid = catastrophe_stop(0.04)
+    assert STOP_MIN < mid < STOP_MAX and abs(mid - 6.0 * 0.04) < 1e-9  # tramo intermedio: 6x sigma
+    assert catastrophe_stop(float("nan")) == STOP_MAX and catastrophe_stop(None) == STOP_MAX  # sin dato: el más prudente
+    assert catastrophe_stop(0.0) == STOP_MAX and catastrophe_stop(-0.01) == STOP_MAX  # datos inválidos: el más prudente

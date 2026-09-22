@@ -30,7 +30,7 @@ from screener.ml_score import get_model, score_signals
 from screener import ledger as ledger_mod
 from screener.events import current_state
 from screener.news import fear_greed
-from screener.risk import PROFILES, position_weight
+from screener.risk import PROFILES, catastrophe_stop, position_weight
 from screener.trend import trend_targets
 from screener.stats import get_stats
 from screener.universe import CACHE, CLASSES, COST, load_recent, names
@@ -233,6 +233,12 @@ def main():
     buy["eur"] = buy["w"] * capital_eff
     buy["riesgo_eur"] = buy["eur"] * buy["loss"]
     buy["ev_eur"] = buy["eur"] * buy["ev"]
+    # stop de catástrofe ajustado a la volatilidad de cada moneda (regla diaria; validado con velas horarias reales)
+    if "crypto" in closes:
+        sigma60_now = closes["crypto"].pct_change().rolling(60).std().iloc[-1]
+        buy["stop_pct"] = buy.apply(lambda r: catastrophe_stop(sigma60_now.get(r["activo"])) if r["clase"] == "crypto" else CATASTROPHE_STOP, axis=1)
+    else:
+        buy["stop_pct"] = CATASTROPHE_STOP
 
     trend = trend_targets(closes["crypto"], prof.trend_fraction * lev) if ("crypto" in closes and prof.trend_fraction > 0) else {}
 
@@ -313,7 +319,8 @@ def main():
         for _, r in buy.iterrows():
             px = prices[(r["clase"], r["activo"])]
             exit_d = (pd.Timestamp(last_dates[r["clase"]]) + pd.Timedelta(days=2)).date()
-            print(f"  • {r['activo']}: comprar {r['eur']:.0f} € a mercado (referencia {px:.6g}); orden STOP de catástrofe a {px * (1 - CATASTROPHE_STOP):.6g} (-{CATASTROPHE_STOP:.0%}); "
+            sp = r["stop_pct"]
+            print(f"  • {r['activo']}: comprar {r['eur']:.0f} € a mercado (referencia {px:.6g}); orden STOP de catástrofe a {px * (1 - sp):.6g} (-{sp:.0%}, ajustado a la volatilidad de esta moneda); "
                   f"vender a mercado el {exit_d} a las 00:05 UTC.")
         print("Nota: 'pérd. p5' = pérdida superada solo el 5% de las veces en situaciones iguales; los peores casos históricos fueron -59% (por eso el stop de catástrofe y el tope de peso).")
         print("No pongas stops ajustados: en el histórico destruyen el edge (stop -5%: +1.7% vs +4.0% sin stop) porque el rebote llega tras caídas intradía.")
@@ -378,7 +385,7 @@ def main():
         if not led["killed"]:
             for _, r in buy.iterrows():
                 px = prices[(r["clase"], r["activo"])]
-                opened += ledger_mod.open_position(led, r["clase"], r["activo"], "caida_fuerte", pd.Timestamp(last_dates[r["clase"]]).date(), px, r["eur"], 1, px * (1 - CATASTROPHE_STOP))
+                opened += ledger_mod.open_position(led, r["clase"], r["activo"], "caida_fuerte", pd.Timestamp(last_dates[r["clase"]]).date(), px, r["eur"], 1, px * (1 - r["stop_pct"]))
         for s in observe:
             px = prices[("crypto", s["asset"])]
             ledger_mod.open_position(led, "crypto", s["asset"], cst["name"], pd.Timestamp(last_dates["crypto"]).date(), px, obs_w * capital_eff, cst["hold"], px * (1 - CATASTROPHE_STOP), paper_only=True)

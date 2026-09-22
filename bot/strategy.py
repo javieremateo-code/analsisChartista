@@ -9,7 +9,7 @@ from screener import crypto100
 from screener.allocation import allocate
 from screener.ml_score import score_signals
 from screener.events import build_events, current_state
-from screener.risk import position_weight
+from screener.risk import catastrophe_stop, position_weight
 from screener.stats import wilson_low
 from screener.universe import CACHE
 from scripts.daily_report import CAPITULATION_DD, evaluate
@@ -28,6 +28,7 @@ class Signal:
     hold_hours: int
     ev: float = 0.0
     meta: dict = field(default_factory=dict)
+    stop_pct: float = None  # distancia del stop de catástrofe (None = usar el valor fijo por defecto del bot)
 
 
 def daily_signals(c1d, qv, liquidity, stats_d, prof, cost, risk_override=None, model=None, fg=None, ml_min=0.60):
@@ -41,10 +42,14 @@ def daily_signals(c1d, qv, liquidity, stats_d, prof, cost, risk_override=None, m
         except Exception:
             df["ml"] = float("nan")  # sin modelo se opera como antes
     buy = allocate(df[df["verdict"] == "COMPRAR"], prof, risk_override, ml_min)
+    sigma60 = c1d.pct_change().rolling(60).std()
     out = []
     for _, r in buy.iterrows():
-        out.append(Signal("daily", r["activo"], float(r["w"]), float(c1d[r["activo"]].iloc[-1]), 24, float(r["ev"]),
-                          dict(z=float(r["z"]), k=int(r["dias"]), fuerza=r.get("fuerza", ""), btc_dd=btc_dd, p=float(r["p"]), ml=float(r.get("ml", float("nan"))))))
+        coin = r["activo"]
+        sig = float(sigma60[coin].iloc[-1]) if coin in sigma60 and pd.notna(sigma60[coin].iloc[-1]) else None
+        out.append(Signal("daily", coin, float(r["w"]), float(c1d[coin].iloc[-1]), 24, float(r["ev"]),
+                          dict(z=float(r["z"]), k=int(r["dias"]), fuerza=r.get("fuerza", ""), btc_dd=btc_dd, p=float(r["p"]), ml=float(r.get("ml", float("nan")))),
+                          stop_pct=catastrophe_stop(sig)))
     return out
 
 

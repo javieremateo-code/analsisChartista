@@ -202,8 +202,9 @@ class Bot:
                 self.log.error("Compra de %s falló: %s", s.coin, e)
                 continue
             hold = pd.Timedelta(hours=s.hold_hours)
+            stop_pct = s.stop_pct if s.stop_pct is not None else self.cfg.catastrophe_stop  # regla diaria: ajustado a volatilidad; 4h: fijo (sin validar por volatilidad)
             pos = dict(id=f"{s.rule}:{s.coin}:{bar.isoformat()}", rule=s.rule, coin=s.coin, entry_ts=now.isoformat(), entry_bar=bar.isoformat(),
-                       entry_px=fill.price, qty=fill.qty, usdt=fill.usdt, stop_px=fill.price * (1 - self.cfg.catastrophe_stop),
+                       entry_px=fill.price, qty=fill.qty, usdt=fill.usdt, stop_px=fill.price * (1 - stop_pct), stop_pct=stop_pct,
                        exit_after=(bar + hold).isoformat(), mode=fill.mode, ref=s.ref, lev=self.lev, slip_entry_bps=(fill.price / s.ref - 1) * 1e4, meta=s.meta)
             self.st["positions"].append(pos)
             held.add(s.coin)

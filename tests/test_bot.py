@@ -6,9 +6,11 @@ import pytest
 from bot.engine import Bot, BotConfig, DataNotReady
 from bot.exchange import SimExchange
 from bot.state import BotState
+from screener.risk import PROFILES
 
 B1 = pd.Timestamp("2026-03-10 08:00")  # cierre de 4h que NO es medianoche (no activa la regla diaria)
 STATS_4H = dict(n=200, p=0.7, p_low=0.65, mean=0.02, p5=-0.05, z_min=6.0)
+BAL_W = PROFILES["balanceado"].max_w  # tope de posición del perfil balanceado (se recalibra de vez en cuando)
 
 
 class FakeFeed:
@@ -59,7 +61,7 @@ def test_entry_then_time_exit_updates_equity(tmp_path):
     out = bot.cycle(B1 + pd.Timedelta(seconds=30))
     assert [p["coin"] for p in out["entries"]] == ["AAA"] and out["entries"][0]["rule"] == "4h"
     pos = st["positions"][0]
-    assert abs(pos["usdt"] - 100.0) < 1e-6  # balanceado: peso máx 10% de 1000
+    assert abs(pos["usdt"] - BAL_W * 1000) < 1e-6  # balanceado: peso máx del perfil x 1000
     assert pd.Timestamp(pos["exit_after"]) == B1 + pd.Timedelta(hours=4) and abs(pos["stop_px"] / pos["entry_px"] - 0.70) < 1e-9
     feed._quotes = {c: dict(bid=float(feed.c4[c].iloc[-1]), ask=float(feed.c4[c].iloc[-1])) for c in ("AAA", "BBB")}  # rebote +3%
     out2 = bot.cycle(B1 + pd.Timedelta(hours=4, seconds=20))
@@ -210,7 +212,7 @@ def test_simulated_leverage_scales_size_caps_at_2x_and_charges_financing(tmp_pat
     assert bot.lev == 2.0
     bot.cycle(B1 + pd.Timedelta(seconds=30))
     pos = st["positions"][0]
-    assert abs(pos["usdt"] - 200.0) < 1e-6 and pos["lev"] == 2.0  # 10% de peso x 2 = 20% del capital
+    assert abs(pos["usdt"] - BAL_W * 2 * 1000) < 1e-6 and pos["lev"] == 2.0  # peso del perfil x apalancamiento 2
     feed._quotes = {c: dict(bid=float(feed.c4[c].iloc[-1]), ask=float(feed.c4[c].iloc[-1])) for c in ("AAA", "BBB")}
     bot.cycle(B1 + pd.Timedelta(hours=4, seconds=20))
     rec = st["closed"][0]
