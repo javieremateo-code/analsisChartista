@@ -348,3 +348,12 @@ probaron FRT y PPL (2ª y 3ª candidatas) para no sacar conclusiones de un solo 
 pierde fuera de muestra (2018-2026). Esto confirma que el problema en BTC/ETH era la tendencia del activo, no la estrategia. **Aun así, se rechaza**: en las tres, comprar y mantener la misma acción gana muchísimo
 más (CAGR 7.9-10.4% frente a 0.4-1.9% del grid) con mejor Sharpe, y el margen es tan fino que una comisión fija de bróker (habitual en acciones, no un %) probablemente lo borraría con las 110-140 operaciones/año
 que genera. Detalle en `research/2026-09-22-bot-de-rejilla-en-acciones-laterales.md`. No conectado a nada.
+
+## Opción 3: grid que se apaga en tendencia — mejora en BTC, falla en ETH, rechazado
+Se probó la vía que quedó abierta tras rechazar el grid en cripto y en acciones: apagar las compras nuevas y el recentrado (no las ventas ni el cortafuegos) cuando el propio mercado está en tendencia fuerte,
+usando el mismo ratio de eficiencia de Kaufman de forma continua (`screener/regime.py`). Ventana y umbral elegidos SOLO con datos hasta 2023, evaluados después en 2023-2026. Por el camino se encontraron y
+corrigieron dos bugs reales (un salto del cortafuegos sin nada que proteger, y una posición que se descartaba sin liquidar al reabrirse el filtro tras estar cerrado) — ver `research/2026-09-22-grid-con-filtro-de-regimen.md`.
+
+**Resultado dividido:** en BTC, el filtro SÍ mejora la rejilla fuera de muestra (CAGR -2.5%→+1.9%, Sharpe -0.16→+0.27), aunque sigue muy lejos de comprar y mantener (+55.7%). En ETH, la MISMA metodología
+selecciona una combinación que empeora el resultado fuera de muestra (CAGR -12.2%→-20.7%). Con solo 2 casos y un resultado partido por la mitad, no hay base para confiar en que se repita. **Rechazado por falta
+de robustez, no por pérdidas catastróficas** — es el intento más cercano a hacer funcionar el grid en cripto de los tres probados, y también el más claramente descartado. No conectado a nada.

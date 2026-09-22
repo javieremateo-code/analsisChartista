@@ -10,6 +10,13 @@ Cortafuegos (obligatorio, no opcional): si el precio cae por debajo de `low * (1
 a mercado (con slippage de pánico) y la rejilla queda parada `pause_days` antes de recentrarse. Sin esto, un grid
 es "recoger céntimos delante de una apisonadora": funciona bien hasta que el mercado rompe con fuerza en una
 dirección y entonces pierde de golpe lo acumulado en semanas.
+
+Filtro de régimen (opcional, `gate`): además del cortafuegos (que reacciona cuando ya se ha roto el rango), se
+puede pasar una serie booleana que diga si el mercado está en régimen lateral (True) o de tendencia (False). En
+modo "tendencia" no se abren posiciones nuevas ni se recentra (que es justo la operación que más pérdida genera
+en una tendencia sostenida — ver research/2026-09-22-bot-de-rejilla-grid.md), pero sí se sigue vendiendo lo que
+toque vender y el cortafuegos sigue activo igual. Es preventivo: intenta no meterse en el desgaste antes de que
+ocurra, en vez de solo limitar el daño una vez que ya está pasando.
 """
 from dataclasses import dataclass, field
 
@@ -42,8 +49,11 @@ def _make_grid(center, cfg):
     return lines
 
 
-def simulate_grid(ohlc: pd.DataFrame, capital: float, cfg: GridConfig = GridConfig()) -> GridResult:
-    """ohlc: DataFrame horario con columnas open, high, low, close, ordenado por fecha."""
+def simulate_grid(ohlc: pd.DataFrame, capital: float, cfg: GridConfig = GridConfig(), gate: pd.Series = None) -> GridResult:
+    """ohlc: DataFrame horario/diario con columnas open, high, low, close, ordenado por fecha.
+    gate: serie booleana opcional alineada con ohlc.index (True = régimen lateral, permite abrir/recentrar;
+    False = régimen de tendencia, solo se permite vender lo que ya se tenía). Si es None, siempre permitido
+    (comportamiento idéntico al de antes de tener este parámetro)."""
     equity = capital
     equity_series = {}
     trades = []
@@ -69,6 +79,7 @@ def simulate_grid(ohlc: pd.DataFrame, capital: float, cfg: GridConfig = GridConf
         active = True
 
     arm(ohlc["close"].iloc[0], ohlc.index[0])
+    was_allowed = True  # para detectar el momento en que la puerta se vuelve a abrir tras estar cerrada
 
     for ts, row in ohlc.iterrows():
         if not active:
@@ -77,10 +88,26 @@ def simulate_grid(ohlc: pd.DataFrame, capital: float, cfg: GridConfig = GridConf
             equity_series[ts] = equity
             continue
 
+        allowed = gate is None or bool(gate.get(ts, True))
+        if allowed and not was_allowed:
+            # la puerta se acaba de reabrir: las líneas pueden llevar mucho tiempo desactualizadas (ancladas al
+            # precio de cuando se cerró). Antes de rearmar en torno al precio ACTUAL, se liquida lo que hubiera
+            # quedado abierto (igual que en un recentrado) — nunca se descarta una posición sin contabilizar su resultado.
+            for i in range(cfg.n_grids):
+                if holding[i]:
+                    qty = per_grid_cap / entry_px[i]
+                    proceeds = qty * row["close"] * (1 - cfg.fee)
+                    pnl = proceeds - per_grid_cap
+                    equity += pnl
+                    trades.append(dict(ts=ts, side="recenter", grid=i, price=row["close"], pnl=pnl))
+            arm(row["close"], ts)
+        was_allowed = allowed
+
         lo, hi = row["low"], row["high"]
 
-        # cortafuegos: el precio ha roto el rango por abajo con margen -> liquidar todo a mercado y pausar
-        if lo <= lines[0] * (1 - cfg.stop_buffer):
+        # cortafuegos: el precio ha roto el rango por abajo con margen Y hay algo invertido que proteger
+        # (si la puerta lleva cerrada mucho tiempo y no se ha comprado nada, no hay nada que liquidar: no cuenta como salto)
+        if holding.any() and lo <= lines[0] * (1 - cfg.stop_buffer):
             panic_px = lines[0] * (1 - cfg.stop_buffer) * (1 - cfg.panic_slippage)
             for i in range(cfg.n_grids):
                 if holding[i]:
@@ -97,7 +124,8 @@ def simulate_grid(ohlc: pd.DataFrame, capital: float, cfg: GridConfig = GridConf
             continue
 
         # recentrado periódico (si el rango sigue vivo pero ha pasado mucho tiempo, para no quedar descolgado)
-        if (ts - last_recenter).days >= cfg.recenter_days:
+        # — no se recentra en régimen de tendencia: es la operación que más desgaste genera (vender barato/comprar caro)
+        if allowed and (ts - last_recenter).days >= cfg.recenter_days:
             # se liquida el inventario abierto al precio de cierre (coste de recentrar, no un pánico)
             for i in range(cfg.n_grids):
                 if holding[i]:
@@ -114,7 +142,7 @@ def simulate_grid(ohlc: pd.DataFrame, capital: float, cfg: GridConfig = GridConf
         # (si no, cualquier línea ya por debajo/encima del precio al (re)armar se "compraría"/"vendería" de golpe,
         # sin que el precio la haya cruzado de verdad — ver tests/test_grid.py)
         for i in range(cfg.n_grids):
-            if not holding[i] and last_price > lines[i] and lo <= lines[i]:
+            if not holding[i] and allowed and last_price > lines[i] and lo <= lines[i]:
                 qty = (per_grid_cap * (1 - cfg.fee)) / lines[i]
                 entry_px[i] = lines[i] / (1 - cfg.fee)  # coste efectivo por unidad incluyendo la comisión de entrada
                 holding[i] = True
@@ -129,4 +157,6 @@ def simulate_grid(ohlc: pd.DataFrame, capital: float, cfg: GridConfig = GridConf
         last_price = row["close"]
         equity_series[ts] = equity
 
-    return GridResult(pd.Series(equity_series), pd.DataFrame(trades), stops)
+    cols = ["ts", "side", "grid", "price", "pnl"]
+    trades_df = pd.DataFrame(trades, columns=cols) if trades else pd.DataFrame(columns=cols)
+    return GridResult(pd.Series(equity_series), trades_df, stops)
