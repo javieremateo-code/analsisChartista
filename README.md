@@ -338,3 +338,13 @@ conclusiones (ver `research/2026-09-22-bot-de-rejilla-grid.md`), verificado con 
 +1098% y +2028%). El cortafuegos sí funciona (ningún crash individual causó más de -22%), pero el desgaste real viene de recentrar el rango una y otra vez durante las tendencias sostenidas de cripto (398 y 368
 recentrados en 6.7 años) — no de los crashes puntuales. **No se ha conectado al informe ni al bot que sigue corriendo en papel.** Es la primera idea de todo el proyecto que se prueba y se descarta después del
 backtest, no antes, y confirma con datos reales la advertencia inicial sobre este tipo de estrategia.
+
+## Bot de rejilla en acciones laterales — mejor que en cripto, pero sigue perdiendo frente a comprar y mantener
+Tras rechazar el grid en BTC/ETH (el problema era la tendencia sostenida, no la mecánica), se probó en acciones **elegidas con datos, no de memoria**: sobre las 493 del S&P 500 con ≥15 años de historial se
+calculó cuánto tiempo pasa cada una cerca de su precio mediano y su ratio de tendencia. Ganadora: **DOC (Healthpeak Properties, REIT sanitario)**, 71% del tiempo dentro del ±15% de su mediana; también se
+probaron FRT y PPL (2ª y 3ª candidatas) para no sacar conclusiones de un solo caso.
+
+**Resultado con 32 años de datos diarios reales (1995-2026):** a diferencia de cripto, el grid **no pierde dinero** en ninguna de las tres (DOC +15.8%, FRT +48.4%, PPL +12.1% en total), y en 2 de 3 tampoco
+pierde fuera de muestra (2018-2026). Esto confirma que el problema en BTC/ETH era la tendencia del activo, no la estrategia. **Aun así, se rechaza**: en las tres, comprar y mantener la misma acción gana muchísimo
+más (CAGR 7.9-10.4% frente a 0.4-1.9% del grid) con mejor Sharpe, y el margen es tan fino que una comisión fija de bróker (habitual en acciones, no un %) probablemente lo borraría con las 110-140 operaciones/año
+que genera. Detalle en `research/2026-09-22-bot-de-rejilla-en-acciones-laterales.md`. No conectado a nada.
